@@ -1,0 +1,76 @@
+{
+  "displayCoverPage": true,
+  "title": "Bird Chief. Arapahoe Chief",
+  "header": "Yale University Library Digital Collections",
+  "pages": [
+    {
+      "caption": "Image 1",
+      "file": "https://collections-test.library.yale.edu/iiif/2/1004949/full/!700,1000/0/default.jpg",
+      "properties": [{
+	    "name":"Test1",
+	    "value":"Value1"
+      }]
+    },
+    {
+      "caption": "Image 2",
+      "file": "https://collections-test.library.yale.edu/iiif/2/1004950/full/!700,1000/0/default.jpg",
+      "properties": []
+    }
+  ],
+  "properties": [
+    {
+      "name": "Title:",
+      "value": "Bird Chief. Arapahoe Chief"
+    },
+    {
+      "name": "Date:",
+      "value": "1867"
+    },
+    {
+      "name": "Call Number:",
+      "value": "WA Photos 27"
+    },
+    {
+      "name": "Rights:",
+      "value": "The use of this image may be subject to the copyright law of the United States (Title 17, United States Code) or to site license or other rights management terms and conditions. The person using the image is liable for any infringement."
+    },
+    {
+      "name": "Generated:",
+      "value": "October 22, 2020"
+    },
+    {
+      "name": "Terms of Use:",
+      "value": "https://guides.library.yale.edu/about/policies/use-of-materials"
+    },
+    {
+      "name": "Link:",
+      "value": "http://hdl.handle.net/10079/digcoll/3318985"
+    }
+  ],
+  "addressLines": [
+    {
+      "name": "Phone:",
+      "value": "(203) 432-2972"
+    },
+    {
+      "name": "Email:",
+      "value": "beinecke.library@yale.edu"
+    },
+    {
+      "name": "Mail:",
+      "value": " "
+    },
+    {
+      "name": "",
+      "value": "Beinecke Rare Book & Manuscript Library"
+    },
+    {
+      "name": "",
+      "value": "P.O. Box 208330"
+    },
+    {
+      "name": "",
+      "value": "New Haven, CT 06520-8330"
+    }
+  ]
+}
