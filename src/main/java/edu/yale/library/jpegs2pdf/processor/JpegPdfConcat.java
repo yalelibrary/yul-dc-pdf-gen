@@ -9,6 +9,6 @@ import edu.yale.library.jpegs2pdf.model.JpegPdfPage;
 import edu.yale.library.jpegs2pdf.model.Property;
 
 public interface JpegPdfConcat {
-	void generatePdf(String header, String documentTitle,  List<Property> documentProperties, List<Property>  documentAddressLines, List<JpegPdfPage> jpegPdfPages, File destinationFile) throws IOException;
+	void generatePdf(String header, String documentTitle,  List<Property> documentProperties, List<Property>  documentAddressLines, List<JpegPdfPage> jpegPdfPages, File destinationFile, String imageProcessingCommand) throws IOException;
 		
 }

@@ -16,7 +16,6 @@ public class JpegPdfPage {
 	public InputStream createInputStream() throws IOException {
 		String filename = getJpegSource();
 		if (filename.startsWith("http://") || filename.startsWith("https://")) {
-			File destination = File.createTempFile("pdf-gen", ".jpg");
 			URL website = new URL(filename);
 			return website.openStream();
 		} else {
