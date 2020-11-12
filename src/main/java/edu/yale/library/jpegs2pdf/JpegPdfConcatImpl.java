@@ -365,6 +365,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 					in,
 					processingInputFile.toPath(),
 					StandardCopyOption.REPLACE_EXISTING);
+			in.close();
 			processingOutputFile = File.createTempFile("pdfPageConverted", "img");
 			processingOutputFile.delete();
 			Process process;
@@ -383,7 +384,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 			if (exitCode == 0 && processingOutputFile.exists()) {
 				in = new FileInputStream(processingOutputFile);
 			} else {
-				System.out.println("Preprocessing failed: " + cmd);
+				throw new IOException("Preprocessing failed: " + cmd);
 			}
 		}
 		try {
