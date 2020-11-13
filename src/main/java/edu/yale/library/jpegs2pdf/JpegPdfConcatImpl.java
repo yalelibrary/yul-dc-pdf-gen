@@ -343,11 +343,11 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 			h = w / imageAspect;
 			y = (PDRectangle.LETTER.getHeight() - yPos - h) / 2;
 		}
-		if ( imageAspect > 1 ) {
-			bimg = resizeImage(bimg, 2000, (int)(2000.0 / imageAspect));
-		} else {
-			bimg = resizeImage(bimg, (int)(2000.0 * imageAspect), 2000);
-		}
+//		if ( imageAspect > 1 ) {
+//			bimg = resizeImage(bimg, 2000, (int)(2000.0 / imageAspect));
+//		} else {
+//			bimg = resizeImage(bimg, (int)(2000.0 * imageAspect), 2000);
+//		}
 		PDImageXObject pdImageXObject = JPEGFactory.createFromImage(document, bimg);
 		COSDictionary cosDictionary = beginMarkedConent(contentStream, COSName.IMAGE);
 		contentStream.drawImage(pdImageXObject, x, y, w, h);
@@ -366,7 +366,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 					processingInputFile.toPath(),
 					StandardCopyOption.REPLACE_EXISTING);
 			in.close();
-			processingOutputFile = File.createTempFile("pdfPageConverted", "img");
+			processingOutputFile = File.createTempFile("pdfPageConverted", ".jpg");
 			processingOutputFile.delete();
 			Process process;
 			String cmd = String.format(imageProcessingCommand, processingInputFile.getAbsolutePath(), processingOutputFile.getAbsolutePath());
