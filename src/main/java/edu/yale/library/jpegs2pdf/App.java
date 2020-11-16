@@ -24,7 +24,6 @@ public class App {
 		
 		PdfProcessor pdfProcessor = new JsonToPdfProcessorImpl(jsonReader, jpegPdfConcat);
 		pdfProcessor.generatePdf(destinationFilepath);
-		
-		
+		System.exit(0);
 	}
 }
