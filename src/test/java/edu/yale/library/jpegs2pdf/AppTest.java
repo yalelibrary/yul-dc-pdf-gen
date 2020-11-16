@@ -28,7 +28,7 @@ public class AppTest extends TestCase {
     public void testApp() throws Exception {
         assertFalse("pdf file exist", pdfFile.exists());
         String[] args = {jsonFile.getAbsolutePath(), pdfFile.getAbsolutePath()};
-        App.main( args );
+        App.run( args );
         assertTrue("pdf file exist", pdfFile.exists());
         assertTrue("pdf file has length", pdfFile.length()>500);
         assertTrue("pdf file valid", isPdfValid(pdfFile));
@@ -38,7 +38,7 @@ public class AppTest extends TestCase {
     public void testAppWithImage() throws Exception {
         assertFalse("imagepdf file exist", imagepdfFile.exists());
         String[] args = {imagejsonFile.getAbsolutePath(), imagepdfFile.getAbsolutePath()};
-        App.main( args );
+        App.run( args );
         assertTrue("imagepdf file exist", imagepdfFile.exists());
         assertTrue("imagepdf file has length", imagepdfFile.length()>500);
         assertTrue("imagepdf file valid", isPdfValid(imagepdfFile));

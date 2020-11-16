@@ -12,19 +12,23 @@ import edu.yale.library.jpegs2pdf.processor.PdfProcessor;
 public class App {
 
 	public static void main(String[] args) throws Exception {
+		run(args);
+		System.exit(0);
+	}
+
+
+	public static void run(String[] args) throws Exception {
 		if (args.length < 2) {
 			throw new IOException("You must provide the json file and output file as arguments.");
 		}
-		
+
 		String pdfContentFilepath = args[0];
 		String destinationFilepath = args[1];
-		
+
 		JpegPdfConcat jpegPdfConcat = new JpegPdfConcatImpl();
 		JsonReader jsonReader = Json.createReader(new FileReader(pdfContentFilepath));
-		
+
 		PdfProcessor pdfProcessor = new JsonToPdfProcessorImpl(jsonReader, jpegPdfConcat);
 		pdfProcessor.generatePdf(destinationFilepath);
-		
-		
 	}
 }
