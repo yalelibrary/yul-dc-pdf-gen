@@ -7,10 +7,13 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -56,17 +59,19 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 	private PDStructureElement currentPart;
 	private PDStructureElement currentSection;
 	private int mcid = 1;
+	private String imageProcessingCommand;
 	
 	private PDDocument document;
 	
 	
-	public void generatePdf(String header, String documentTitle, List<Property> documentProperties, List<Property> documentAddressLines, List<JpegPdfPage> jpegPdfPages, File destinationFile) 
+	public void generatePdf(String header, String documentTitle, List<Property> documentProperties, List<Property> documentAddressLines, List<JpegPdfPage> jpegPdfPages, File destinationFile, String imageProcessingCommand)
 			throws IOException {
 		this.header = header;
 		this.documentTitle = documentTitle;
 		this.properties = documentProperties;
 		this.addressLines = documentAddressLines;
 		this.pages = jpegPdfPages;
+		this.imageProcessingCommand = imageProcessingCommand;
 		
 		long start = System.currentTimeMillis();		
 		createDocument();
@@ -321,12 +326,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 	private void drawImageOnPage(JpegPdfPage jpegPdfPage, PDPage page, PDPageContentStream contentStream, float yPos,
 			float margin) throws IOException {
 		InputStream in = jpegPdfPage.createInputStream();
-		BufferedImage bimg = null;
-		try {			
-			bimg = ImageIO.read(in);
-		} finally {
-			in.close();
-		}
+		BufferedImage bimg = getBufferedImage(in);
 		float width = bimg.getWidth();
 		float height = bimg.getHeight();
 		float pageAspect = PDRectangle.LETTER.getWidth() / (PDRectangle.LETTER.getHeight() - yPos);
@@ -343,16 +343,62 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 			h = w / imageAspect;
 			y = (PDRectangle.LETTER.getHeight() - yPos - h) / 2;
 		}
-		if ( imageAspect > 1 ) {
-			bimg = resizeImage(bimg, 2000, (int)(2000.0 / imageAspect));
-		} else {
-			bimg = resizeImage(bimg, (int)(2000.0 * imageAspect), 2000);
-		}
+//		if ( imageAspect > 1 ) {
+//			bimg = resizeImage(bimg, 2000, (int)(2000.0 / imageAspect));
+//		} else {
+//			bimg = resizeImage(bimg, (int)(2000.0 * imageAspect), 2000);
+//		}
 		PDImageXObject pdImageXObject = JPEGFactory.createFromImage(document, bimg);
 		COSDictionary cosDictionary = beginMarkedConent(contentStream, COSName.IMAGE);
 		contentStream.drawImage(pdImageXObject, x, y, w, h);
 		contentStream.endMarkedContent();
 		addImageToStructure( page, currentSection, pdImageXObject, jpegPdfPage.getCaption(), cosDictionary);
+	}
+
+	private BufferedImage getBufferedImage(InputStream in) throws IOException {
+		BufferedImage bimg;
+		File processingInputFile = null;
+		File processingOutputFile = null;
+		if (imageProcessingCommand != null) {
+			processingInputFile = File.createTempFile("pdfPageOriginal", "img");
+			java.nio.file.Files.copy(
+					in,
+					processingInputFile.toPath(),
+					StandardCopyOption.REPLACE_EXISTING);
+			in.close();
+			processingOutputFile = File.createTempFile("pdfPageConverted", ".jpg");
+			processingOutputFile.delete();
+			Process process;
+			String cmd = String.format(imageProcessingCommand, processingInputFile.getAbsolutePath(), processingOutputFile.getAbsolutePath());
+			process = Runtime.getRuntime()
+					.exec(cmd);
+			StreamGobbler streamGobbler =
+					new StreamGobbler(process.getInputStream(), System.out::println);
+			Executors.newSingleThreadExecutor().submit(streamGobbler);
+			int exitCode = 0;
+			try {
+				exitCode = process.waitFor();
+			} catch (InterruptedException e) {
+				throw new IOException(e);
+			}
+			if (exitCode == 0 && processingOutputFile.exists()) {
+				in = new FileInputStream(processingOutputFile);
+			} else {
+				throw new IOException("Preprocessing failed: " + cmd);
+			}
+		}
+		try {
+			bimg = ImageIO.read(in);
+		} finally {
+			in.close();
+		}
+		if (processingInputFile != null) {
+			processingInputFile.delete();
+		}
+		if (processingOutputFile != null) {
+			processingOutputFile.delete();
+		}
+		return bimg;
 	}
 
 	private BufferedImage resizeImage( BufferedImage image, int width, int height ) {
@@ -418,6 +464,21 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		
 	}
 
+	private static class StreamGobbler implements Runnable {
+		private InputStream inputStream;
+		private Consumer<String> consumer;
+
+		public StreamGobbler(InputStream inputStream, Consumer<String> consumer) {
+			this.inputStream = inputStream;
+			this.consumer = consumer;
+		}
+
+		@Override
+		public void run() {
+			new BufferedReader(new InputStreamReader(inputStream)).lines()
+					.forEach(consumer);
+		}
+	}
 	
 
 }

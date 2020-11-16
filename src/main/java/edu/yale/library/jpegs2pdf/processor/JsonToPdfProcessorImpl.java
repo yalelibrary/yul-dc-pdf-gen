@@ -53,7 +53,8 @@ public class JsonToPdfProcessorImpl implements PdfProcessor {
 		}
 		
 		String documentTitle = document.getString("title", "No Title");
-		String header = document.getString("header", "Yale University Library Digital Collections") ;
+		String header = document.getString("header", "Yale University Library Digital Collections");
+		String imageProcessingComment = document.getString("imageProcessingCommand", null);
 
 		List<JpegPdfPage> jpegPdfPages = new ArrayList<JpegPdfPage>();
 		for (JsonValue pageValue : pages) {
@@ -67,7 +68,7 @@ public class JsonToPdfProcessorImpl implements PdfProcessor {
 			jpegPdfPage.setProperties(pageProperties);
 			jpegPdfPages.add(jpegPdfPage);
 		}
-		jpegPdfConcat.generatePdf(header, documentTitle, documentProperties, documentAddressLines, jpegPdfPages, new File(destinationPdfFilepath));
+		jpegPdfConcat.generatePdf(header, documentTitle, documentProperties, documentAddressLines, jpegPdfPages, new File(destinationPdfFilepath), imageProcessingComment);
 	}
 	
 
