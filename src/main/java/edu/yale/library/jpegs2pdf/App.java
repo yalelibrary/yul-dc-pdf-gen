@@ -12,7 +12,12 @@ import edu.yale.library.jpegs2pdf.processor.PdfProcessor;
 public class App {
 
 	public static void main(String[] args) throws Exception {
-		run(args);
+		try {
+			run(args);
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
 		System.exit(0);
 	}
 

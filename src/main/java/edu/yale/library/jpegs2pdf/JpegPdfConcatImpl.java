@@ -368,23 +368,34 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 			in.close();
 			processingOutputFile = File.createTempFile("pdfPageConverted", ".jpg");
 			processingOutputFile.delete();
-			Process process;
-			String cmd = String.format(imageProcessingCommand, processingInputFile.getAbsolutePath(), processingOutputFile.getAbsolutePath());
-			process = Runtime.getRuntime()
-					.exec(cmd);
-			StreamGobbler streamGobbler =
-					new StreamGobbler(process.getInputStream(), System.out::println);
-			Executors.newSingleThreadExecutor().submit(streamGobbler);
-			int exitCode = 0;
-			try {
-				exitCode = process.waitFor();
-			} catch (InterruptedException e) {
-				throw new IOException(e);
-			}
-			if (exitCode == 0 && processingOutputFile.exists()) {
-				in = new FileInputStream(processingOutputFile);
-			} else {
-				throw new IOException("Preprocessing failed: " + cmd);
+			int errorCount = 0;
+			boolean successful = false;
+			while (!successful) {
+				try {
+					Process process;
+					String cmd = String.format(imageProcessingCommand, processingInputFile.getAbsolutePath(), processingOutputFile.getAbsolutePath());
+					process = Runtime.getRuntime()
+							.exec(cmd);
+					StreamGobbler streamGobbler =
+							new StreamGobbler(process.getInputStream(), System.err::println);
+					Executors.newSingleThreadExecutor().submit(streamGobbler);
+					int exitCode = 0;
+					try {
+						exitCode = process.waitFor();
+					} catch (InterruptedException e) {
+						throw new IOException(e);
+					}
+					if (exitCode == 0 && processingOutputFile.exists()) {
+						in = new FileInputStream(processingOutputFile);
+						successful = true;
+					} else {
+						throw new IOException("Preprocessing failed: " + cmd);
+					}
+				} catch (IOException e) {
+					errorCount++;
+					if (errorCount > 5) throw e;
+					else try {Thread.sleep(100);} catch (InterruptedException intErr){}
+				}
 			}
 		}
 		try {
