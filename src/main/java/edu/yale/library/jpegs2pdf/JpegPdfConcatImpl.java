@@ -292,7 +292,8 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		return text.replace("\u00a0", " ")
 				.replace('\n', ' ')
 				.replace('\r', ' ')
-				.replace('\t', ' ');
+				.replace('\t', ' ')
+				.replaceAll("\\p{Cc}", "");
 	}
 
 	public static final Pattern VALID_EMAIL_ADDRESS_REGEX = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,6}$",
