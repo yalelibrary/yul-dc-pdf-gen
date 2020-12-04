@@ -7,6 +7,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -21,6 +22,7 @@ import javax.imageio.ImageIO;
 
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.io.MemoryUsageSetting;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentCatalog;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
@@ -97,7 +99,16 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 	}
 
 	private void createDocument() {
-		this.document = new PDDocument();		
+		MemoryUsageSetting memoryUsageSetting = MemoryUsageSetting.setupTempFileOnly();
+		try {
+			File tempDir = Files.createTempDirectory("PDFGen").toFile();
+			tempDir.deleteOnExit();
+			memoryUsageSetting.setTempDir(tempDir);
+		} catch ( IOException e ) {
+			System.err.println("Error setting temp directory for PDF MemoryUsageSettings");
+			e.printStackTrace();
+		}
+		this.document = new PDDocument(memoryUsageSetting);
 		PDDocumentCatalog documentCatalog = this.document.getDocumentCatalog();
 		PDStructureTreeRoot structureTreeRoot = new PDStructureTreeRoot();
 		document.getDocumentInformation().setCreationDate(Calendar.getInstance());
