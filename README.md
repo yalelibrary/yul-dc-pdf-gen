@@ -36,8 +36,8 @@ mvn clean compile assembly:single
 
 ### Generating PDFs
 ```
-java -jar target/jpegs2pdf-1.0.jar <JSON file> <Destination PDF File>
-java -jar target/jpegs2pdf-1.0.jar sample-json/2001489.json 2001489.pdf
-java -jar target/jpegs2pdf-1.0.jar sample-json/2001937.json 2001937.pdf
+java -jar target/jpegs2pdf-1.1.jar <JSON file> <Destination PDF File>
+java -jar target/jpegs2pdf-1.1.jar sample-json/2001489.json 2001489.pdf
+java -jar target/jpegs2pdf-1.1.jar sample-json/2001937.json 2001937.pdf
 ```
 Open the PDF files in a PDF Viewer.
