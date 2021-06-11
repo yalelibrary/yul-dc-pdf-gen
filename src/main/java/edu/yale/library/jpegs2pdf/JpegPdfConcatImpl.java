@@ -339,17 +339,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 
 	private void drawImageOnPage(JpegPdfPage jpegPdfPage, PDPage page, PDPageContentStream contentStream, float yPos,
 			float margin) throws IOException {
-		InputStream in = null;
-		int errorCount = 0;
-		while (in == null) {
-			try {
-				in = jpegPdfPage.createInputStream();
-			} catch (Exception e) {
-				errorCount++;
-				if (errorCount > 5) throw e;
-				else try {Thread.sleep(1000);} catch (InterruptedException intErr) {}
-			}
-		}
+		InputStream in = jpegPdfPage.createInputStream();
 		BufferedImage bimg = getBufferedImage(in);
 		float width = bimg.getWidth();
 		float height = bimg.getHeight();
