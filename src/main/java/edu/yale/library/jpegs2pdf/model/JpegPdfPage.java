@@ -16,8 +16,7 @@ public class JpegPdfPage {
 	public InputStream createInputStream() throws IOException {
 		String filename = getJpegSource();
 		if (filename.startsWith("http://") || filename.startsWith("https://")) {
-			URL website = new URL(filename);
-			return website.openStream();
+			return createHttpInputStream(filename, 5);
 		} else {
 			return new FileInputStream(getJpegSource());
 		}
@@ -46,4 +45,21 @@ public class JpegPdfPage {
 	public void setProperties(List<Property> properties) {
 		this.properties = properties;
 	}
+
+	private InputStream createHttpInputStream(String address, int retryCount) throws IOException {
+		InputStream in = null;
+		int errorCount = 0;
+		while (in == null) {
+			try {
+				URL website = new URL(address);
+				in = website.openStream();
+			} catch (IOException e) { // IOException is thrown for 500 error.
+				errorCount++;
+				if (errorCount > retryCount) throw e;  // breaks out after errorCount reaches limit.
+				else try {Thread.sleep(1000);} catch (InterruptedException intErr) {}
+			}
+		}
+		return in;
+	}
+
 }
