@@ -62,10 +62,10 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 	private PDStructureElement currentSection;
 	private int mcid = 1;
 	private String imageProcessingCommand;
-	
+
 	private PDDocument document;
-	
-	
+
+
 	public void generatePdf(String header, String documentTitle, List<Property> documentProperties, List<Property> documentAddressLines, List<JpegPdfPage> jpegPdfPages, File destinationFile, String imageProcessingCommand)
 			throws IOException {
 		this.header = header;
@@ -74,17 +74,17 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		this.addressLines = documentAddressLines;
 		this.pages = jpegPdfPages;
 		this.imageProcessingCommand = imageProcessingCommand;
-		
-		long start = System.currentTimeMillis();		
+
+		long start = System.currentTimeMillis();
 		createDocument();
-		loadFonts();	
-		addPart();			
-		addCoverPageToDocument();			
+		loadFonts();
+		addPart();
+		addCoverPageToDocument();
 		addPart();
 		addJpegPages();
 		document.save(destinationFile);
 		document.close();
-		
+
 		long time = System.currentTimeMillis() - start;
 		System.out.println("Generated: " + pages.size() + " in " + time + (pages.size()>0?(" at " + (time / pages.size())):""));
 	}
@@ -134,7 +134,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 			}
 		}
 	}
-	
+
 	private Property findProperty(String title ) {
 		for ( Property p : this.properties ) {
 			if ( p.getTitle().equals(title)) {
@@ -172,7 +172,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		h = 75;
 		y = PDRectangle.LETTER.getHeight() - margin - h;
 		w = h * imageAspect;
-		PDImageXObject pdImageXObject = LosslessFactory.createFromImage(document, bimg);				
+		PDImageXObject pdImageXObject = LosslessFactory.createFromImage(document, bimg);
 		COSDictionary cosDictionary = beginMarkedConent(contentStream, COSName.IMAGE);
 		contentStream.drawImage(pdImageXObject, x, y, w, h);
 		contentStream.endMarkedContent();
@@ -183,7 +183,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		contentStream.stroke();
 		float ypos = drawPropertiesToContentStream(document, page, contentStream, header, properties, 15, 10, 150, new Color(51,90,138), Color.BLUE, StandardStructureTypes.H1);
 		ypos += 40;
-		
+
 		contentStream.setStrokingColor(new Color(150,150,150));
 		contentStream.moveTo(50, PDRectangle.LETTER.getHeight() - ypos + 20 );
 		contentStream.lineTo(PDRectangle.LETTER.getWidth() - 100, PDRectangle.LETTER.getHeight() - ypos + 20);
@@ -192,8 +192,8 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		if ( addressLines != null ) {
 			drawPropertiesToContentStream(document, page, contentStream, "Contact Information", addressLines, 15, 10, ypos, new Color(51, 90, 138), Color.BLUE, StandardStructureTypes.H2);
 		}
-		
-		
+
+
 		contentStream.close();
 	}
 
@@ -228,10 +228,10 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 	}
 
 
-	private float drawPropertiesToContentStream(PDDocument document, PDPage page, PDPageContentStream contentStream, 
+	private float drawPropertiesToContentStream(PDDocument document, PDPage page, PDPageContentStream contentStream,
 			String caption,
-			List<Property> properties, int titleFontSize, int fontSize, 
-			float yPos, 
+			List<Property> properties, int titleFontSize, int fontSize,
+			float yPos,
 			Color titleColor, Color linkColor, String headingStructureType )
 			throws IOException {
 		float margin = 50;
@@ -246,19 +246,19 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		float leading = fontHeight * 2;
 		contentStream.setLeading(titleLeading);
 		contentStream.newLineAtOffset(margin, PDRectangle.LETTER.getHeight() - yPos - fontHeight);
-		
-		
+
+
 		if ( titleColor != null ) {
 			contentStream.setNonStrokingColor(titleColor);
 		}
-		
+
 		yPos += drawWithWidth(contentStream, caption, PDRectangle.LETTER.getWidth() - 2 * margin, valueFont, titleFontSize);
-		
+
 		if ( titleColor != null ) {
 			contentStream.setNonStrokingColor(0,0,0);
 		}
-		
-		
+
+
 
 		contentStream.newLine();
 		contentStream.endMarkedContent();
@@ -286,11 +286,11 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 				yPos += drawWithWidth(contentStream, fixText(property.getValue()), paraWidth, valueFont, fontSize);
 				if ( link ) {
 					contentStream.setNonStrokingColor(Color.BLACK);
-				}	
+				}
 				// contentStream.drawString( entry.getValue() );
 				contentStream.newLineAtOffset(-maxTitleWidth, -fontHeight * (float) 2.2);
 				contentStream.endMarkedContent();
-				addContentToStructure(  page, currentSection, COSName.P, StandardStructureTypes.P, dictionary);	
+				addContentToStructure(  page, currentSection, COSName.P, StandardStructureTypes.P, dictionary);
 				yPos += fontHeight * (float) 2.2;
 
 			}
@@ -340,7 +340,8 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 	private void drawImageOnPage(JpegPdfPage jpegPdfPage, PDPage page, PDPageContentStream contentStream, float yPos,
 			float margin) throws IOException {
 		InputStream in = jpegPdfPage.createInputStream();
-		BufferedImage bimg = getBufferedImage(in);
+
+		BufferedImage bimg = getBufferedImage(in, jpegPdfPage.getJpegSource());
 		float width = bimg.getWidth();
 		float height = bimg.getHeight();
 		float pageAspect = PDRectangle.LETTER.getWidth() / (PDRectangle.LETTER.getHeight() - yPos);
@@ -369,7 +370,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		addImageToStructure( page, currentSection, pdImageXObject, jpegPdfPage.getCaption(), cosDictionary);
 	}
 
-	private BufferedImage getBufferedImage(InputStream in) throws IOException {
+	private BufferedImage getBufferedImage(InputStream in, String source) throws IOException {
 		BufferedImage bimg;
 		File processingInputFile = null;
 		File processingOutputFile = null;
@@ -390,20 +391,21 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 					String cmd = String.format(imageProcessingCommand, processingInputFile.getAbsolutePath(), processingOutputFile.getAbsolutePath());
 					process = Runtime.getRuntime()
 							.exec(cmd);
+					StringWriter cmdOutput = new StringWriter();
 					StreamGobbler streamGobbler =
-							new StreamGobbler(process.getInputStream(), System.err::println);
+							new StreamGobbler(process.getInputStream(), cmdOutput::write);
 					Executors.newSingleThreadExecutor().submit(streamGobbler);
 					int exitCode = 0;
 					try {
 						exitCode = process.waitFor();
 					} catch (InterruptedException e) {
-						throw new IOException(e);
+						throw new IOException("Interrupted: " + source, e);
 					}
 					if (exitCode == 0 && processingOutputFile.exists()) {
 						in = new FileInputStream(processingOutputFile);
 						successful = true;
 					} else {
-						throw new IOException("Preprocessing failed: " + cmd);
+						throw new IOException("Preprocessing failed for (" + source + "): " + cmd + "\nOutput: " + cmdOutput);
 					}
 				} catch (IOException e) {
 					errorCount++;
@@ -414,6 +416,8 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		}
 		try {
 			bimg = ImageIO.read(in);
+		} catch (IOException e) {
+			throw new IOException("Error reading image after convert for (" + source + ")", e);
 		} finally {
 			in.close();
 		}
@@ -437,8 +441,8 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		graphics2D.dispose();
 		return newImage;
 	}
-	
-	
+
+
 	private COSDictionary beginMarkedConent(PDPageContentStream contentStream, COSName name ) throws IOException {
 		COSDictionary cosDictionary = new COSDictionary();
 		cosDictionary.setInt(COSName.MCID, mcid);
@@ -446,7 +450,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		contentStream.beginMarkedContent(name, PDPropertyList.create(cosDictionary));
 		return cosDictionary;
 	}
-	
+
 	private void addImageToStructure(PDPage page, PDStructureElement part, PDImageXObject pdImageXObject, String altText, COSDictionary cosDictionary) {
 
 		PDStructureElement structureElement = new PDStructureElement(StandardStructureTypes.Figure, part);
@@ -457,10 +461,10 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		structureElement.appendKid(markedContent);
 		if ( altText != null ) {
 			cosDictionary.setString(COSName.ALT, altText);
-			structureElement.setAlternateDescription(altText);			
+			structureElement.setAlternateDescription(altText);
 		}
 	}
-	
+
 	private PDStructureElement addPart() {
 
 		PDStructureElement part = new PDStructureElement(StandardStructureTypes.PART, document.getDocumentCatalog().getStructureTreeRoot());
@@ -468,17 +472,17 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		currentPart = part;
 		return part;
 	}
-	
 
-	
+
+
 	private PDStructureElement addSection(PDStructureElement parent) {
 		PDStructureElement sect = new PDStructureElement(StandardStructureTypes.SECT, parent);
 		parent.appendKid(sect);
 		currentSection = sect;
 		return sect;
 	}
-	
- 
+
+
 	private void addContentToStructure(PDPage page, PDStructureElement part, COSName name, String type, COSDictionary cosDictionary) {
 
 		PDStructureElement structureElement = new PDStructureElement(type, part);
@@ -486,7 +490,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		PDMarkedContent markedContent = new PDMarkedContent(name, cosDictionary);
 		structureElement.appendKid(markedContent);
 		part.appendKid(structureElement);
-		
+
 	}
 
 	private static class StreamGobbler implements Runnable {
@@ -504,6 +508,6 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 					.forEach(consumer);
 		}
 	}
-	
+
 
 }
