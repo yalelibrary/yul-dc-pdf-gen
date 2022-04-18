@@ -389,12 +389,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 				try {
 					Process process;
 					String cmd = String.format(imageProcessingCommand, processingInputFile.getAbsolutePath(), processingOutputFile.getAbsolutePath());
-					process = Runtime.getRuntime()
-							.exec(cmd);
-					StringWriter cmdOutput = new StringWriter();
-					StreamGobbler streamGobbler =
-							new StreamGobbler(process.getInputStream(), cmdOutput::write);
-					Executors.newSingleThreadExecutor().submit(streamGobbler);
+					process = new ProcessBuilder(cmd.split("\\s+")).inheritIO().start();
 					int exitCode = 0;
 					try {
 						exitCode = process.waitFor();
@@ -405,7 +400,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 						in = new FileInputStream(processingOutputFile);
 						successful = true;
 					} else {
-						throw new IOException("Preprocessing failed for (" + source + "): " + cmd + "\nOutput: " + cmdOutput);
+						throw new IOException("Preprocessing failed for (" + source + "): " + cmd);
 					}
 				} catch (IOException e) {
 					errorCount++;
