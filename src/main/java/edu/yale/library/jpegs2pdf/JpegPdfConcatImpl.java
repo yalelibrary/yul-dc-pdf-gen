@@ -7,6 +7,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
@@ -56,8 +57,10 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 	private List<Property> addressLines;
 	private String header;
 	private String documentTitle;
-	private PDFont regFont;
-	private PDFont boldFont;
+	private PDFont arabicBoldFont;
+	private PDFont arabicRegFont;
+	private PDFont latinBoldFont;
+	private PDFont latinRegFont;
 	private PDStructureElement currentPart;
 	private PDStructureElement currentSection;
 	private int mcid = 1;
@@ -74,14 +77,15 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		this.addressLines = documentAddressLines;
 		this.pages = jpegPdfPages;
 		this.imageProcessingCommand = imageProcessingCommand;
-
 		long start = System.currentTimeMillis();
 		createDocument();
 		loadFonts();
+		PDFont[] selectedFonts = new PDFont[2];
+		pickFont(documentTitle.toString(), selectedFonts);
 		addPart();
-		addCoverPageToDocument();
+		addCoverPageToDocument(selectedFonts);
 		addPart();
-		addJpegPages();
+		addJpegPages(selectedFonts);
 		document.save(destinationFile);
 		document.close();
 
@@ -89,11 +93,11 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		System.out.println("Generated: " + pages.size() + " in " + time + (pages.size()>0?(" at " + (time / pages.size())):""));
 	}
 
-	private void addJpegPages() throws IOException {
+	private void addJpegPages(PDFont[] selectedFonts) throws IOException {
 		int ix = 1;
 		if ( pages != null ) {
 			for (JpegPdfPage page : pages) {
-				addJpegPageToDocument(page);
+				addJpegPageToDocument(page, selectedFonts);
 			}
 		}
 	}
@@ -145,11 +149,35 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 	}
 
 	private void loadFonts() throws IOException {
-		boldFont = PDType0Font.load(document, this.getClass().getResourceAsStream("/FreeSansBold.ttf"));
-		regFont = PDType0Font.load(document, this.getClass().getResourceAsStream("/arialunicodems.ttf"));
+		arabicBoldFont = PDType0Font.load(document, this.getClass().getResourceAsStream("/NotoNaskhArabic-Bold.ttf"));
+		arabicRegFont = PDType0Font.load(document, this.getClass().getResourceAsStream("/NotoNaskhArabic-Regular.ttf"));
+		latinBoldFont = PDType0Font.load(document, this.getClass().getResourceAsStream("/FreeSansBold.ttf"));
+		latinRegFont = PDType0Font.load(document, this.getClass().getResourceAsStream("/arialunicodems.ttf"));
 	}
 
-	private void addCoverPageToDocument() throws IOException {
+	private PDFont[] pickFont(String text, PDFont[] selectedFonts) throws IOException {
+		boolean isLatin = false;
+		boolean isArabic = false;
+		Charset arabic = Charset.forName("ISO8859-6");
+		Charset latin = Charset.forName("ISO8859-2");
+		if ( arabic.newEncoder().canEncode(text) ) {
+			isArabic = true;
+		}
+		if ( latin.newEncoder().canEncode(text) ) {
+			isLatin = true;
+		}
+		if ( isArabic ) {
+			selectedFonts[0] = arabicBoldFont;
+			selectedFonts[1] = arabicRegFont;
+		}
+		if ( isLatin ) {
+			selectedFonts[0] = latinBoldFont;
+			selectedFonts[1] = latinRegFont;
+		}
+		return selectedFonts;
+	}
+
+	private void addCoverPageToDocument(PDFont[] selectedFonts) throws IOException {
 		PDPage page = new PDPage(PDRectangle.LETTER);
 		page.getCOSObject().setItem(COSName.getPDFName("Tabs"), COSName.S);
 		document.addPage(page);
@@ -181,7 +209,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		contentStream.moveTo(50, PDRectangle.LETTER.getHeight() - 130);
 		contentStream.lineTo(PDRectangle.LETTER.getWidth() - 100, PDRectangle.LETTER.getHeight() - 130);
 		contentStream.stroke();
-		float ypos = drawPropertiesToContentStream(document, page, contentStream, header, properties, 15, 10, 150, new Color(51,90,138), Color.BLUE, StandardStructureTypes.H1);
+		float ypos = drawPropertiesToContentStream(document, page, contentStream, header, properties, 15, 10, 150, selectedFonts, new Color(51,90,138), Color.BLUE, StandardStructureTypes.H1);
 		ypos += 40;
 
 		contentStream.setStrokingColor(new Color(150,150,150));
@@ -190,7 +218,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		contentStream.stroke();
 
 		if ( addressLines != null ) {
-			drawPropertiesToContentStream(document, page, contentStream, "Contact Information", addressLines, 15, 10, ypos, new Color(51, 90, 138), Color.BLUE, StandardStructureTypes.H2);
+			drawPropertiesToContentStream(document, page, contentStream, "Contact Information", addressLines, 15, 10, ypos, selectedFonts, new Color(51, 90, 138), Color.BLUE, StandardStructureTypes.H2);
 		}
 
 
@@ -231,12 +259,14 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 	private float drawPropertiesToContentStream(PDDocument document, PDPage page, PDPageContentStream contentStream,
 			String caption,
 			List<Property> properties, int titleFontSize, int fontSize,
-			float yPos,
+			float yPos, PDFont[] selectedFonts,
 			Color titleColor, Color linkColor, String headingStructureType )
 			throws IOException {
 		float margin = 50;
-		PDFont labelFont = boldFont;
-		PDFont valueFont = regFont;
+
+		PDFont labelFont = selectedFonts[0];
+		PDFont valueFont = selectedFonts[1];
+
 		float titleFontHeight = (valueFont.getFontDescriptor().getCapHeight()) / 1000 * titleFontSize;
 		float fontHeight = (valueFont.getFontDescriptor().getCapHeight()) / 1000 * fontSize;
 		COSDictionary dictionary = beginMarkedConent(contentStream, COSName.P);
@@ -324,14 +354,14 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		return false;
 	}
 
-	private void addJpegPageToDocument(JpegPdfPage jpegPdfPage) throws IOException {
+	private void addJpegPageToDocument(JpegPdfPage jpegPdfPage, PDFont[] selectedFonts) throws IOException {
 		float margin = 50;
 		PDPage page = new PDPage(PDRectangle.LETTER);
 		page.getCOSObject().setItem(COSName.getPDFName("Tabs"), COSName.S);
 		document.addPage(page);
 		PDPageContentStream contentStream = new PDPageContentStream(document, page, AppendMode.OVERWRITE, true);
 		addSection( currentPart);
-		float yPos = drawPropertiesToContentStream(document, page, contentStream, jpegPdfPage.getCaption(), jpegPdfPage.getProperties(), 12, 9, 50, null, null, StandardStructureTypes.H1);
+		float yPos = drawPropertiesToContentStream(document, page, contentStream, jpegPdfPage.getCaption(), jpegPdfPage.getProperties(), 12, 9, 50, selectedFonts, null, null, StandardStructureTypes.H1);
 		yPos -= 40;
 		drawImageOnPage(jpegPdfPage, page, contentStream, yPos, margin);
 		contentStream.close();
