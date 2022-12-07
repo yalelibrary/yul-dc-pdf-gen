@@ -225,9 +225,11 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		contentStream.close();
 	}
 
-	private float drawWithWidth(PDPageContentStream content, String text, float paragraphWidth, PDFont font,
+	private float drawWithWidth(PDPageContentStream content, String text, float paragraphWidth, PDFont[] selectedFonts,
 			int fontSize) throws IOException {
 		text = fixText(text);
+		pickFont(text, selectedFonts);
+		PDFont font = selectedFonts[1];
 		int start = 0;
 		int end = 0;
 		float fontHeight = (font.getFontDescriptor().getCapHeight()) / 1000 * fontSize * (float) 1.5;
@@ -264,8 +266,8 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 			throws IOException {
 		float margin = 50;
 
-		PDFont labelFont = selectedFonts[0];
-		PDFont valueFont = selectedFonts[1];
+		PDFont labelFont = latinBoldFont;
+		PDFont valueFont = latinRegFont;
 
 		float titleFontHeight = (valueFont.getFontDescriptor().getCapHeight()) / 1000 * titleFontSize;
 		float fontHeight = (valueFont.getFontDescriptor().getCapHeight()) / 1000 * fontSize;
@@ -282,7 +284,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 			contentStream.setNonStrokingColor(titleColor);
 		}
 
-		yPos += drawWithWidth(contentStream, caption, PDRectangle.LETTER.getWidth() - 2 * margin, valueFont, titleFontSize);
+		yPos += drawWithWidth(contentStream, caption, PDRectangle.LETTER.getWidth() - 2 * margin, selectedFonts, titleFontSize);
 
 		if ( titleColor != null ) {
 			contentStream.setNonStrokingColor(0,0,0);
@@ -313,7 +315,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 				if ( link ) {
 					contentStream.setNonStrokingColor(linkColor);
 				}
-				yPos += drawWithWidth(contentStream, fixText(property.getValue()), paraWidth, valueFont, fontSize);
+				yPos += drawWithWidth(contentStream, fixText(property.getValue()), paraWidth, selectedFonts, fontSize);
 				if ( link ) {
 					contentStream.setNonStrokingColor(Color.BLACK);
 				}
