@@ -3,17 +3,10 @@ package edu.yale.library.jpegs2pdf;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -56,8 +49,9 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 	private List<Property> addressLines;
 	private String header;
 	private String documentTitle;
-	private PDFont regFont;
-	private PDFont boldFont;
+	private PDFont arabicRegFont;
+	private PDFont latinBoldFont;
+	private PDFont latinRegFont;
 	private PDStructureElement currentPart;
 	private PDStructureElement currentSection;
 	private int mcid = 1;
@@ -65,6 +59,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 
 	private PDDocument document;
 
+	private static final String UNRENDERABLE_CHARACTER = "□"; //U+25A1
 
 	public void generatePdf(String header, String documentTitle, List<Property> documentProperties, List<Property> documentAddressLines, List<JpegPdfPage> jpegPdfPages, File destinationFile, String imageProcessingCommand)
 			throws IOException {
@@ -74,7 +69,6 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		this.addressLines = documentAddressLines;
 		this.pages = jpegPdfPages;
 		this.imageProcessingCommand = imageProcessingCommand;
-
 		long start = System.currentTimeMillis();
 		createDocument();
 		loadFonts();
@@ -145,8 +139,42 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 	}
 
 	private void loadFonts() throws IOException {
-		boldFont = PDType0Font.load(document, this.getClass().getResourceAsStream("/FreeSansBold.ttf"));
-		regFont = PDType0Font.load(document, this.getClass().getResourceAsStream("/arialunicodems.ttf"));
+		arabicRegFont = PDType0Font.load(document, this.getClass().getResourceAsStream("/NotoNaskhArabic-Regular.ttf"));
+		latinBoldFont = PDType0Font.load(document, this.getClass().getResourceAsStream("/FreeSansBold.ttf"));
+		latinRegFont = PDType0Font.load(document, this.getClass().getResourceAsStream("/arialunicodems.ttf"));
+	}
+
+	/**
+	 * Picks the font and adjusts the text if necessary.
+	 * First it tries to render the string with all available fonts.  If one succeeds, when it returns the original
+	 * text and the font that worked.
+	 * If the no font works for the entire string, it uses the first font and replaces all the un-renderable characters
+	 * with an emtpy box and returns the altered text and the font.
+	 * @param text
+	 * @param fonts
+	 * @return
+	 * @throws IOException
+	 */
+	public FontAndText pickFontAndText(String text, PDFont[] fonts) throws IOException {
+		for (PDFont font : fonts) {
+			try {
+				font.encode(text);
+				return new FontAndText(font, text); // found a font that works for the text
+			} catch(Exception e) {
+				// can't encode, try the next font
+			}
+		}
+		// nothing worked, so change the text to get it to render based on the first font:
+		StringBuilder sb = new StringBuilder();
+		for (char c : text.toCharArray()) {
+			try {
+				fonts[0].encode(String.valueOf(c));
+				sb.append(c);
+			} catch (Exception e) {
+				sb.append(UNRENDERABLE_CHARACTER);
+			}
+		}
+		return new FontAndText(fonts[0], sb.toString());
 	}
 
 	private void addCoverPageToDocument() throws IOException {
@@ -197,24 +225,39 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		contentStream.close();
 	}
 
-	private float drawWithWidth(PDPageContentStream content, String text, float paragraphWidth, PDFont font,
+	private float drawWithWidth(PDPageContentStream content, String text, float paragraphWidth, PDFont[] fonts,
 			int fontSize) throws IOException {
 		text = fixText(text);
 		int start = 0;
 		int end = 0;
-		float fontHeight = (font.getFontDescriptor().getCapHeight()) / 1000 * fontSize * (float) 1.5;
+		float fontHeight = 0;
+		// get the max height of all possible fonts.
+		for (PDFont font : fonts) {
+			fontHeight = Math.max((font.getFontDescriptor().getCapHeight()) / 1000 * fontSize * (float) 1.5, fontHeight);
+		}
 		float height = 0;
+		float width = 0;
 		for (int i : possibleWrapPoints(text)) {
-			float width = font.getStringWidth(text.substring(start, i)) / 1000 * fontSize;
-			if (start < end && width > paragraphWidth) {
-				content.showText(text.substring(start, end));
+			String textSnippet = text.substring(start, i);
+			FontAndText fontAndText = pickFontAndText(textSnippet, fonts);
+			PDFont font = fontAndText.font;
+			textSnippet = fontAndText.text;
+			width += font.getStringWidth(textSnippet) / 1000 * fontSize;
+			content.setFont(font, fontSize);
+			content.showText(textSnippet);
+			if (width > paragraphWidth) {
 				content.newLineAtOffset(0, -fontHeight);
 				height += fontHeight;
-				start = end;
+				width = 0;
 			}
-			end = i;
+			start = i;
 		}
-		content.showText(text.substring(start));
+		String lastSnippet = text.substring(start);
+		FontAndText fontAndText = pickFontAndText(lastSnippet, fonts);
+		PDFont font = fontAndText.font;
+		lastSnippet = fontAndText.text;
+		content.setFont(font, fontSize);
+		content.showText(lastSnippet);
 		return height;
 	}
 
@@ -235,13 +278,18 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 			Color titleColor, Color linkColor, String headingStructureType )
 			throws IOException {
 		float margin = 50;
-		PDFont labelFont = boldFont;
-		PDFont valueFont = regFont;
-		float titleFontHeight = (valueFont.getFontDescriptor().getCapHeight()) / 1000 * titleFontSize;
-		float fontHeight = (valueFont.getFontDescriptor().getCapHeight()) / 1000 * fontSize;
+
+		PDFont labelFont = latinBoldFont;
+		PDFont[] valueFonts = new PDFont[] {latinRegFont, arabicRegFont};
+		FontAndText titleFontAndText = pickFontAndText(caption, valueFonts);
+		PDFont titleFont = titleFontAndText.font;
+		caption = titleFontAndText.text;
+
+		float titleFontHeight = (titleFont.getFontDescriptor().getCapHeight()) / 1000 * titleFontSize;
+		float fontHeight = (titleFont.getFontDescriptor().getCapHeight()) / 1000 * fontSize;
 		COSDictionary dictionary = beginMarkedConent(contentStream, COSName.P);
 		contentStream.beginText();
-		contentStream.setFont(valueFont, titleFontSize);
+		contentStream.setFont(titleFont, titleFontSize);
 		float titleLeading = titleFontHeight * 2;
 		float leading = fontHeight * 2;
 		contentStream.setLeading(titleLeading);
@@ -252,7 +300,7 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 			contentStream.setNonStrokingColor(titleColor);
 		}
 
-		yPos += drawWithWidth(contentStream, caption, PDRectangle.LETTER.getWidth() - 2 * margin, valueFont, titleFontSize);
+		yPos += drawWithWidth(contentStream, caption, PDRectangle.LETTER.getWidth() - 2 * margin, valueFonts, titleFontSize);
 
 		if ( titleColor != null ) {
 			contentStream.setNonStrokingColor(0,0,0);
@@ -273,17 +321,16 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 			}
 			float paraWidth = PDRectangle.LETTER.getWidth() - 2 * margin - maxTitleWidth;
 			for (Property property: properties ) {
-
 				contentStream.setFont(labelFont, fontSize);
 				dictionary = beginMarkedConent(contentStream, COSName.P);
 				contentStream.showText(fixText(property.getTitle()) + " ");
 				contentStream.newLineAtOffset(maxTitleWidth, 0);
-				contentStream.setFont(valueFont, fontSize);
+				contentStream.setFont(titleFont, fontSize);
 				boolean link = linkColor != null && isValueLink(property.getValue());
 				if ( link ) {
 					contentStream.setNonStrokingColor(linkColor);
 				}
-				yPos += drawWithWidth(contentStream, fixText(property.getValue()), paraWidth, valueFont, fontSize);
+				yPos += drawWithWidth(contentStream, fixText(property.getValue()), paraWidth, valueFonts, fontSize);
 				if ( link ) {
 					contentStream.setNonStrokingColor(Color.BLACK);
 				}
@@ -501,6 +548,23 @@ public class JpegPdfConcatImpl implements JpegPdfConcat {
 		public void run() {
 			new BufferedReader(new InputStreamReader(inputStream)).lines()
 					.forEach(consumer);
+		}
+	}
+
+	public static class FontAndText {
+		PDFont font;
+		String text;
+		FontAndText(PDFont font, String text) {
+			this.font = font;
+			this.text = text;
+		}
+
+		public PDFont getFont() {
+			return font;
+		}
+
+		public String getText() {
+			return text;
 		}
 	}
 
