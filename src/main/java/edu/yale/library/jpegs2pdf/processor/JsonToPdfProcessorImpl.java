@@ -1,28 +1,21 @@
 package edu.yale.library.jpegs2pdf.processor;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.net.URL;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import edu.yale.library.jpegs2pdf.model.JpegPdfPage;
+import edu.yale.library.jpegs2pdf.model.Property;
 
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.json.JsonValue;
-
-import edu.yale.library.jpegs2pdf.model.JpegPdfPage;
-import edu.yale.library.jpegs2pdf.model.Property;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class JsonToPdfProcessorImpl implements PdfProcessor {
 	private JsonReader jsonReader;
 	private JpegPdfConcat jpegPdfConcat;
-	
+
 
 	public JsonToPdfProcessorImpl(JsonReader jsonReader, JpegPdfConcat jpegPdfConcat) {
 		this.jsonReader = jsonReader;
@@ -33,14 +26,14 @@ public class JsonToPdfProcessorImpl implements PdfProcessor {
 
 	@Override
 	public void generatePdf( String destinationPdfFilepath) throws IOException {
-		
+
 		JsonObject document = jsonReader.readObject();
 		jsonReader.close();
-		
-		
+
+
 		JsonArray pages = document.getJsonArray("pages");
 		List<Property> documentProperties = null;
-		
+
 		if ( document.containsKey("properties") ) {
 			JsonArray properties = document.getJsonArray("properties");
 			documentProperties = propertyListFromJsonArray(properties);
@@ -51,7 +44,7 @@ public class JsonToPdfProcessorImpl implements PdfProcessor {
 			JsonArray addressLines = document.getJsonArray("addressLines");
 			documentAddressLines = propertyListFromJsonArray(addressLines);
 		}
-		
+
 		String documentTitle = document.getString("title", "No Title");
 		String header = document.getString("header", "Yale University Library Digital Collections");
 		String imageProcessingComment = document.getString("imageProcessingCommand", null);
@@ -70,7 +63,7 @@ public class JsonToPdfProcessorImpl implements PdfProcessor {
 		}
 		jpegPdfConcat.generatePdf(header, documentTitle, documentProperties, documentAddressLines, jpegPdfPages, new File(destinationPdfFilepath), imageProcessingComment);
 	}
-	
+
 
 	private static List<Property> propertyListFromJsonArray(JsonArray properties) throws IOException {
 		List<Property> ret = new ArrayList<Property>();
